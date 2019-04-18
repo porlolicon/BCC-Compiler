@@ -11,6 +11,7 @@ try:
         print(util.asmheader)
         print(util.asmdata)
         print(util.asmtext)
+        print(util.asmleave)
 except:
     pass
 
@@ -23,5 +24,7 @@ while True:
     if result:
         print(result)
         util.statement_main(result)
+        print(util.asmheader)
         print(util.asmdata)
         print(util.asmtext)
+        print(util.asmleave)

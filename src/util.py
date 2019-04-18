@@ -1,15 +1,47 @@
 import sys
 
 asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
-asmtext = "section .text\n_main:\n"
-asmdata = "section .data\n"
+asmtext = "section .text\n"
+asmdata = 'section .data\n'
+asmleave = 'pop rbp\nret\n'
 
 reg_order = ["rdi", "rsi", "rdx", "rcx"]
 
 global_var = []
+
 global_str_counter = 0
 global_str = {}
 str_prefix = '_LC'
+
+
+def add_data(var_name, value):
+    global asmdata
+    asmdata += "%s db %s\n" % (var_name, value)
+
+
+def add_text(cmd):
+    global asmtext
+    asmtext += cmd + '\n'
+
+
+# init
+# sys_input
+add_data("_fmin", "\"%d\", 0")
+add_text("_input:")
+add_text("push rbp")
+add_text("mov rbp, rsp")
+add_text("sub rsp, 16")
+add_text("lea rax, [rbp - 8]")
+add_text("mov rsi, rax")
+add_text("mov rdi, _fmin")
+add_text("call _scanf")
+add_text("mov rax, [rbp - 8]")
+add_text("leave")
+add_text("ret")
+
+# add main label
+add_text("_main:")
+add_text("push rbp")
 
 # I know this is stupid.
 # Just leave it alone.
@@ -18,6 +50,8 @@ str_prefix = '_LC'
 def get_type(symbol):
     if type(symbol) is tuple:
         return 'expression'
+    if symbol == 'input':
+        return 'INPUT'
     try:
         int(symbol)
         return 'CONSTANT'
@@ -39,16 +73,6 @@ def get_str(text):
     return global_str[text]
 
 
-def add_data(var_name, value):
-    global asmdata
-    asmdata += "%s db %s\n" % (var_name, value)
-
-
-def add_text(cmd):
-    global asmtext
-    asmtext += cmd + '\n'
-
-
 def print_error(error_str):
     print("ERROR : " + error_str)
 
@@ -58,25 +82,29 @@ def error_token():
 
 
 def declare_var(var_name, value=0):
+    global asmdata
     if var_name in global_var:
         print_error("Duplicate variable")
     else:
-        add_data(var_name, value)
+        asmdata += "%s dq %s\n" % (var_name, value)
 
 
 def declare_string(text):
+    global global_str_counter
     if text not in global_str:
         asm_symbol = str_prefix + str(global_str_counter)
         global_str[text] = asm_symbol
         asm_val = '%s, 0' % text
         add_data(asm_symbol, asm_val)
+        global_str_counter += 1
 
 
 def statement_main(stm):
     state_symbol = stm[0]
     switcher = {
         'assign': assign_routine,
-        'print': print_routine
+        'print': print_routine,
+        'var_constant': declare_var
     }
     func = switcher[state_symbol]
     func(stm[1], stm[2])
@@ -86,25 +114,32 @@ def expression_main(exp, count=0):
     t = exp[0]
     switcher = {
         '+': plus_routine,
-        '-': minus_routine
+        '-': minus_routine,
+        '==': equal_routine
     }
 
     func = switcher[t]
     func(exp[1], exp[2], count)
 
 
+def input_routine():
+    add_text("call _input")
+
+
 def print_routine(fmt, arg):
     add_text("mov rdi, " + get_str(fmt))
     reg_c = 1
     while arg[1] != None:
-        a = arg[1]
-        a_type = get_type(a)
-        if a_type == 'CONSTANT':
-            add_text("mov %s, %s" % (reg_order[reg_c], a))
-        elif a_type == 'ID':
-            add_text("mov %s, [%s]" % (reg_order[reg_c], a))
-        else:
-            pass
+        if arg[0] == 'argument':
+            a = arg[1]
+            a_type = get_type(a)
+            if a_type == 'CONSTANT':
+                add_text("mov %s, %s" % (reg_order[reg_c], a))
+            elif a_type == 'ID':
+                add_text("mov %s, [%s]" % (reg_order[reg_c], a))
+            else:
+                expression_main(arg[1])
+                add_text("mov %s, rax" % reg_order[reg_c])
         reg_c += 1
         arg = arg[2]
     add_text("call _printf")
@@ -122,6 +157,9 @@ def assign_routine(dest, source):
         add_text('mov [%s], rax' % dest)
     elif s_type == 'expression':
         expression_main(source)
+        add_text('mov [%s], rax' % dest)
+    elif s_type == 'INPUT':
+        input_routine()
         add_text('mov [%s], rax' % dest)
 
 
@@ -169,3 +207,7 @@ def minus_routine(a, b, count=0):
         expression_main(b, count)
     else:
         error_token()
+
+
+def equal_routine(a, b):
+    print("EQ ROUTINE")
