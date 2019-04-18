@@ -3,35 +3,17 @@
 
 ## Syntax Example
 ```
-  func sum(a, b){
-    ret a + b
-  }
+var a = input
+var b = 3
+var c = sum(a, b)
+print("%d + %d = %d", a, b, c);
 
-  func main(){
-    var a = 2
-    var b = 3
-    var c = sum(a, b)
-    print("%d + %d = %d", a, b, c);
-  }
-```
+if a > 2 {
+  a = 2
+}
 
-## Build
-```
-  flex src/bcc.l
-  gcc lex.yy.c src/main.c src/syscall.c src/util.c src/hash.c src/token.c
-```
+while a <= 20 {
+  a = a + 1
+}
 
-## Build with Makefile
-```
-  make clean
-  make all
-```
-
-## Test
-```
-  # Linux
-  ./a.out test.bcc output.asm
-  
-  # Windows
-  ./a.exe test.bcc output.asm
 ```
