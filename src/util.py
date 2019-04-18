@@ -104,12 +104,24 @@ def declare_string(text):
         global_str_counter += 1
 
 
+def declare_arr(var_name, args):
+    global asmdata
+    if var_name in global_var:
+            print_error("Duplicate variable")
+    else:
+        asmdata += "%s dq " % var_name
+        if args[0] == 'argument':
+            while args[1] != None:
+                asmdata += "%s ," % args[1]
+                args = args[2]
+
 def statement_main(stm):
     state_symbol = stm[0]
     switcher = {
         'assign': assign_routine,
         'print': print_routine,
-        'var_constant': declare_var
+        'var_constant': declare_var,
+        'var_array': declare_arr
     }
     func = switcher[state_symbol]
     func(stm[1], stm[2])
