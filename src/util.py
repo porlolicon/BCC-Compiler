@@ -3,7 +3,7 @@ import sys
 asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
 asmtext = "section .text\n"
 asmdata = 'section .data\n'
-asmleave = 'pop rbp\nret\n'
+asmleave = 'mov rax, 0\npop rbp\nret\n'
 
 reg_order = ["rdi", "rsi", "rdx", "rcx"]
 
@@ -43,10 +43,10 @@ add_text("ret")
 add_text("_main:")
 add_text("push rbp")
 
-# I know this is stupid.
-# Just leave it alone.
-
-
+'''
+I know this is stupid.
+Just leave it alone.
+'''
 def get_type(symbol):
     if type(symbol) is tuple:
         return 'expression'
@@ -107,13 +107,15 @@ def declare_string(text):
 def declare_arr(var_name, args):
     global asmdata
     if var_name in global_var:
-            print_error("Duplicate variable")
+        print_error("Duplicate variable")
     else:
         asmdata += "%s dq " % var_name
         if args[0] == 'argument':
             while args[1] != None:
                 asmdata += "%s ," % args[1]
                 args = args[2]
+        asmdata += '\n'
+
 
 def statement_main(stm):
     state_symbol = stm[0]
