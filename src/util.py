@@ -86,7 +86,12 @@ def declare_var(var_name, value=0):
     if var_name in global_var:
         print_error("Duplicate variable")
     else:
-        asmdata += "%s dq %s\n" % (var_name, value)
+        if value == 'input':
+            asmdata += "%s dq 0\n" % var_name
+            input_routine()
+            add_text("mov [%s], rax" % var_name)
+        else:
+            asmdata += "%s dq %s\n" % (var_name, value)
 
 
 def declare_string(text):
