@@ -1,3 +1,4 @@
+import ply.yacc as yacc
 import bcclex
 
 tokens = bcclex.tokens
@@ -10,11 +11,19 @@ def p_line_simple(p):
 # statement --------------------------------
 
 
+def p_statement_multiple(p):
+    '''statement : statement NEWLINE statement
+                 | statement NEWLINE statement NEWLINE'''
+    p[0] = ('multiple_stm', p[1], p[3])
+
+
 def p_statement_simple(p):
-    '''statement : assignexp NEWLINE
-                 | defineexp NEWLINE
-                 | printexp NEWLINE
-                 | ifexp NEWLINE'''
+    '''statement : assignexp
+                 | defineexp
+                 | printexp
+                 | ifexp
+                 | ifelseexp
+                 | statement NEWLINE'''
     #  | loopexp NEWLINE
     p[0] = p[1]
 
@@ -89,15 +98,27 @@ def p_printX_simple(p):
 
 # if-else ---------------------------------------
 def p_ifexp_simple(p):
-    'ifexp : IF expression "{" statement "}" '
+    '''ifexp : IF expression "{" statement "}"
+             | IF expression "{" NEWLINE statement "}"'''
     # p[0] = ('if',p[2],p[5],p[8])
-    p[0] = ('if')
+    if p[4] == '\n':
+        p[0] = ('if', p[2], p[5])
+    else:
+        p[0] = ('if', p[2], p[4])
+
+
+def p_ifelseexp_simple(p):
+    '''ifelseexp : ifexp elseexp'''
+    p[0] = ('ifelse', p[1], p[2])
 
 
 def p_elseexp_simple(p):
-    '''elseexp : nl ELSE "{" nl statement "}"
-               | empty empty empty empty empty'''
-    p[0] = ('else', p[5])
+    '''elseexp : ELSE "{" statement "}"
+               | ELSE "{" NEWLINE statement "}"'''
+    if p[3] == '\n':
+        p[0] = ('else', p[4])
+    else:
+        p[0] = ('else', p[3])
 
 # def p_statement_var(p):
 #     '''statement : VAR ID'''
@@ -214,13 +235,11 @@ def p_error(p):
         print("Syntax error at EOF")
 
 
-import ply.yacc as yacc
-
 parser = yacc.yacc()
 
 
-def parse(s):
-    return parser.parse(s)
+def parse(s, debug=False):
+    return parser.parse(s, debug=debug)
 
 
 # while True:
