@@ -207,7 +207,8 @@ def expression_main(exp, count=0):
             '+': plus_routine,
             '-': minus_routine,
             '*': multiply_routine,
-            '/': divide_routine
+            '/': divide_routine,
+            '%': mod_routine
         }
 
         func = switcher[t]
@@ -401,11 +402,72 @@ def multiply_routine(a, b, count=0):
         error_token()
 
 
-def divide_routine(a, b):
+def divide_routine(a, b, count=0):
     a_type = get_type(a)
     b_type = get_type(b)
+    add_text('xor rdx, rdx')
     if a_type == 'CONSTANT':
-        pass
+        if count == 0:
+            add_text('mov rax, ' + a)
+        else:
+            add_text('mov rcx, ' + a)
+            add_text('idiv rcx')
+    elif a_type == 'ID':
+        if count == 0:
+            add_text('mov rax, [%s]' % a)
+        else:
+            add_text('mov rcx, [%s]' % a)
+            add_text('idiv rcx')
+    elif a_type == 'expression':
+        expression_main(a, count)
+
+    count += 1
+
+    add_text('xor rdx, rdx')
+    if b_type == 'CONSTANT':
+        add_text('mov rcx, ' + b)
+        add_text('idiv rcx')
+    elif b_type == 'ID':
+        add_text('mov rcx, [%s]' % b)
+        add_text('idiv rcx')
+    elif b_type == 'expression':
+        expression_main(b, count)
+
+
+def mod_routine(a, b, count=0):
+    a_type = get_type(a)
+    b_type = get_type(b)
+    add_text('xor rdx, rdx')
+    if a_type == 'CONSTANT':
+        if count == 0:
+            add_text('mov rax, ' + a)
+        else:
+            add_text('mov rcx, ' + a)
+            add_text('idiv rcx')
+            add_text('mov rax, rdx')
+    elif a_type == 'ID':
+        if count == 0:
+            add_text('mov rax, [%s]' % a)
+        else:
+            add_text('mov rcx, [%s]' % a)
+            add_text('idiv rcx')
+            add_text('mov rax, rdx')
+    elif a_type == 'expression':
+        expression_main(a, count)
+
+    count += 1
+
+    add_text('xor rdx, rdx')
+    if b_type == 'CONSTANT':
+        add_text('mov rcx, ' + b)
+        add_text('idiv rcx')
+        add_text('mov rax, rdx')
+    elif b_type == 'ID':
+        add_text('mov rcx, [%s]' % b)
+        add_text('idiv rcx')
+        add_text('mov rax, rdx')
+    elif b_type == 'expression':
+        expression_main(b, count)
 
 
 def and_routine():
