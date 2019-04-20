@@ -45,15 +45,15 @@ add_text("ret")
 add_text("_main:")
 add_text("push rbp")
 
-'''
-I know this is stupid.
-Just leave it alone.
-'''
 
 cmp_symbol = ['==', '!=', '>', '<', '>=', '<=', '&&']
 
 
 def get_type(symbol):
+    '''
+    I know this is stupid.
+    Just leave it alone.
+    '''
     if type(symbol) is tuple:
         if symbol[0] == 'array':
             return 'ARRAY'

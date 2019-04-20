@@ -128,6 +128,7 @@ def p_elseexp_simple(p):
     else:
         p[0] = ('else', p[3])
 
+
 def p_whileexp_simple(p):
     '''whileexp : WHILE expression "{" statement "}"
              | WHILE expression "{" NEWLINE statement "}"'''
@@ -164,11 +165,13 @@ def p_arrayG_simple(p):
 
 # Expression -----------------------------------------------
 
+
 def p_val_simple(p):
     '''val : CONSTANT
            | arrayG
            | ID'''
     p[0] = p[1]
+
 
 def p_expression_simple(p):
     '''expression : val'''
@@ -264,14 +267,3 @@ parser = yacc.yacc()
 
 def parse(s, debug=False):
     return parser.parse(s, debug=debug)
-
-
-# while True:
-#     try:
-#         s = input('calc > ')
-#     except EOFError:
-#         break
-#     if not s:
-#         continue
-#     result = parser.parse(s + '\n')
-#     print(result)
