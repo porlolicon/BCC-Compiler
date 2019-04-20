@@ -3,6 +3,13 @@ import bcclex
 
 tokens = bcclex.tokens
 
+precedence = (
+    ('right', 'AND_OP'),
+    ('left', '+', '-'),
+    ('left', '*', '/'),
+    ('left', '>', '<')
+)
+
 
 def p_line_simple(p):
     'line : statement'
@@ -38,7 +45,6 @@ def p_nl_simple(p):
 
 def p_assignexp_simple(p):
     '''assignexp : ID "=" expression
-                 | ID "=" val
                  | arrayG "=" expression
                  | ID "=" INPUT
                  | arrayG "=" INPUT'''
@@ -149,11 +155,38 @@ def p_arrayG_simple(p):
 
 # Expression -----------------------------------------------
 
+def p_val_simple(p):
+    '''val : CONSTANT
+           | arrayG
+           | ID'''
+    p[0] = p[1]
 
 def p_expression_simple(p):
-    '''expression : ID
-                  | arrayG'''
+    '''expression : val'''
     p[0] = p[1]
+
+# math
+# + - * / % -val ()
+
+
+def p_expression_math(p):
+    '''expression : expression "+" expression
+                  | val "+" val
+                  | expression "-" expression
+                  | expression "*" expression
+                  | expression "/" expression
+                  | expression "%" expression'''
+    p[0] = (p[2], p[1], p[3])
+
+
+def p_expression_minusValue(p):
+    'expression : "-" expression'
+    p[0] = ('minus', p[1])
+
+
+def p_expression_bracket(p):
+    'expression : "(" expression ")"'
+    p[0] = ('bracket', p[2])
 
 # boolean
 #'EQ_OP', 'LE_OP', 'GE_OP', 'NE_OP' , 'AND_OP', 'OR_OP' , '<' , '>'
@@ -170,8 +203,7 @@ def p_expression_or(p):
 
 
 def p_expression_EQ(p):
-    '''expression : expression EQ_OP expression
-                  | expression EQ_OP val'''
+    '''expression : expression EQ_OP expression'''
     p[0] = ('==', p[1], p[3])
 
 
@@ -191,47 +223,13 @@ def p_expression_NE(p):
 
 
 def p_expression_less(p):
-    '''expression : expression "<" expression
-                  | expression "<" val'''
+    '''expression : expression "<" expression'''
     p[0] = ('<', p[1], p[3])
 
 
 def p_expression_greaterthan(p):
-    '''expression : expression ">" expression
-                  | expression ">" val'''
+    '''expression : expression ">" expression'''
     p[0] = ('>', p[1], p[3])
-
-# math
-# + - * / % -val ()
-
-def p_val_simple(p):
-    '''val : CONSTANT
-           | arrayG
-           | ID'''
-    p[0] = p[1]
-
-
-def p_expression_math(p):
-    '''expression : expression "+" expression
-                  | expression "+" val
-                  | expression "-" expression
-                  | expression "-" val
-                  | expression "*" expression
-                  | expression "*" val
-                  | expression "/" expression
-                  | expression "/" val
-                  | expression "%" expression'''
-    p[0] = (p[2], p[1], p[3])
-
-
-def p_expression_minusValue(p):
-    'expression : "-" expression'
-    p[0] = ('minus', p[1])
-
-
-def p_expression_bracket(p):
-    'expression : "(" expression ")"'
-    p[0] = ('bracket', p[2])
 
 
 # -----------------------------------------------

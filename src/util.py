@@ -193,7 +193,12 @@ def cmp_main(cmp_e):
         add_text("mov rax, [%s]" % b)
     elif type_b == 'CONSTANT':
         add_text("mov rax, %s" % b)
-    add_text("cmp rbx, rax")
+    # add_text("/////////////")
+    # add_text(str(a))
+    # add_text(str(b))
+    if t != '&&':
+        add_text("cmp rbx, rax")
+    # add_text("/////////////")
     switcher = {
         '==': equal_routine,
         '>': greater_routine,
@@ -253,8 +258,6 @@ def plus_routine(a, b, count=0):
     count += 1
     a_type = get_type(a)
     b_type = get_type(b)
-    print(a)
-    print(b)
     if a_type == 'CONSTANT':
         add_text("add rax, " + a)
     elif a_type == 'ID':
