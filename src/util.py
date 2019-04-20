@@ -224,24 +224,19 @@ def cmp_main(cmp_e):
     type_b = get_type(b)
     if type_a == 'expression':
         expression_main(a)
-        add_text("mov rbx, rax")
     elif type_a == 'ID':
-        add_text("mov rbx, [%s]" % a)
+        add_text("mov rax, [%s]" % a)
     elif type_a == 'CONSTANT':
-        add_text("mov rbx, %s" % a)
+        add_text("mov rax, %s" % a)
 
     if type_b == 'expression':
         expression_main(b)
     elif type_b == 'ID':
-        add_text("mov rax, [%s]" % b)
+        add_text("mov rdx, [%s]" % b)
     elif type_b == 'CONSTANT':
-        add_text("mov rax, %s" % b)
-    # add_text("/////////////")
-    # add_text(str(a))
-    # add_text(str(b))
+        add_text("mov rdx, %s" % b)
     if t != '&&':
-        add_text("cmp rbx, rax")
-    # add_text("/////////////")
+        add_text("cmp rax, rdx")
     switcher = {
         '==': equal_routine,
         '>': greater_routine,
