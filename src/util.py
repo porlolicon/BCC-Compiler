@@ -153,11 +153,12 @@ def ifelse_routine(ifstm, elsestm):
 def if_routine(exp, stm, iselse=False):
     global global_if_counter
     global_if_counter += 1
+    exit_c = global_if_counter
     expression_main(exp)
     statement_main(stm)
     if iselse:
         add_text("jmp _L%d" % (global_if_counter + 1))
-    add_text("_L%d:" % global_if_counter)
+    add_text("_L%d:" % exit_c)
 
 
 def else_routine(stm):
