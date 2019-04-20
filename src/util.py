@@ -1,4 +1,5 @@
 import sys
+from inspect import getframeinfo, stack
 
 asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
 asmtext = "section .text\n"
@@ -11,8 +12,8 @@ global_var = []
 
 global_str_counter = 0
 global_str = {}
+global_if_counter = 0
 str_prefix = '_LC'
-
 
 def add_data(var_name, value):
     global asmdata
@@ -47,9 +48,15 @@ add_text("push rbp")
 I know this is stupid.
 Just leave it alone.
 '''
+
+cmp_symbol = ['==', '!=', '>', '<', '>=', '<=', '&&']
+
+
 def get_type(symbol):
     if type(symbol) is tuple:
         return 'expression'
+    if symbol == 'array':
+        return 'ARRAY'
     if symbol == 'input':
         return 'INPUT'
     try:
@@ -78,6 +85,8 @@ def print_error(error_str):
 
 
 def error_token():
+    caller = getframeinfo(stack()[1][0])
+    print("Error line : " + str(caller.lineno))
     print_error("Unexpected token")
 
 
@@ -117,13 +126,33 @@ def declare_arr(var_name, args):
         asmdata += '\n'
 
 
+def multiple_stm_routine(stm1, stm2):
+    statement_main(stm1)
+    statement_main(stm2)
+
+
+def if_routine(exp, stm):
+    global global_if_counter
+    global_if_counter += 1
+    exp_type = get_type(exp)
+    expression_main(exp)
+    statement_main(stm)
+    add_text("_L%d:" % global_if_counter)
+
+
+def else_routine():
+    pass
+
+
 def statement_main(stm):
     state_symbol = stm[0]
     switcher = {
         'assign': assign_routine,
         'print': print_routine,
         'var_constant': declare_var,
-        'var_array': declare_arr
+        'var_array': declare_arr,
+        'multiple_stm': multiple_stm_routine,
+        'if': if_routine
     }
     func = switcher[state_symbol]
     func(stm[1], stm[2])
@@ -131,14 +160,50 @@ def statement_main(stm):
 
 def expression_main(exp, count=0):
     t = exp[0]
-    switcher = {
-        '+': plus_routine,
-        '-': minus_routine,
-        '==': equal_routine
-    }
+    if t in cmp_symbol:
+        cmp_main(exp)
+    else:
+        switcher = {
+            '+': plus_routine,
+            '-': minus_routine
+        }
 
+        func = switcher[t]
+        func(exp[1], exp[2], count)
+
+
+def cmp_main(cmp_e):
+    global global_if_counter
+    t = cmp_e[0]
+    a = cmp_e[1]
+    b = cmp_e[2]
+    type_a = get_type(a)
+    type_b = get_type(b)
+    if type_a == 'expression':
+        expression_main(a)
+        add_text("mov rbx, rax")
+    elif type_a == 'ID':
+        add_text("mov rbx, [%s]" % a)
+    elif type_a == 'CONSTANT':
+        add_text("mov rbx, %s" % a)
+
+    if type_b == 'expression':
+        expression_main(b)
+    elif type_b == 'ID':
+        add_text("mov rax, [%s]" % b)
+    elif type_b == 'CONSTANT':
+        add_text("mov rax, %s" % b)
+    add_text("cmp rbx, rax")
+    switcher = {
+        '==': equal_routine,
+        '>': greater_routine,
+        '<': less_routine,
+        '<=': less_equ_routine,
+        '>=': greater_equ_routine,
+        '&&': and_routine
+    }
     func = switcher[t]
-    func(exp[1], exp[2], count)
+    func()
 
 
 def input_routine():
@@ -188,6 +253,8 @@ def plus_routine(a, b, count=0):
     count += 1
     a_type = get_type(a)
     b_type = get_type(b)
+    print(a)
+    print(b)
     if a_type == 'CONSTANT':
         add_text("add rax, " + a)
     elif a_type == 'ID':
@@ -228,5 +295,29 @@ def minus_routine(a, b, count=0):
         error_token()
 
 
-def equal_routine(a, b):
-    print("EQ ROUTINE")
+def and_routine():
+    pass
+
+
+def less_equ_routine():
+    add_text("jg _L%d" % global_if_counter)
+
+
+def greater_equ_routine():
+    add_text("jl _L%d" % global_if_counter)
+
+
+def less_routine():
+    add_text("jge _L%d" % global_if_counter)
+
+
+def greater_routine():
+    add_text("jle _L%d" % global_if_counter)
+
+
+def not_equal_routine():
+    add_text("je _L%d" % global_if_counter)
+
+
+def equal_routine():
+    add_text("jne _L%d" % global_if_counter)

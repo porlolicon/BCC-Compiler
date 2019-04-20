@@ -38,6 +38,7 @@ def p_nl_simple(p):
 
 def p_assignexp_simple(p):
     '''assignexp : ID "=" expression
+                 | ID "=" val
                  | arrayG "=" expression
                  | ID "=" INPUT
                  | arrayG "=" INPUT'''
@@ -151,7 +152,6 @@ def p_arrayG_simple(p):
 
 def p_expression_simple(p):
     '''expression : ID
-                  | CONSTANT
                   | arrayG'''
     p[0] = p[1]
 
@@ -170,7 +170,8 @@ def p_expression_or(p):
 
 
 def p_expression_EQ(p):
-    'expression : expression EQ_OP expression'
+    '''expression : expression EQ_OP expression
+                  | expression EQ_OP val'''
     p[0] = ('==', p[1], p[3])
 
 
@@ -190,23 +191,35 @@ def p_expression_NE(p):
 
 
 def p_expression_less(p):
-    'expression : expression "<" expression'
+    '''expression : expression "<" expression
+                  | expression "<" val'''
     p[0] = ('<', p[1], p[3])
 
 
 def p_expression_greaterthan(p):
-    'expression : expression ">" expression'
+    '''expression : expression ">" expression
+                  | expression ">" val'''
     p[0] = ('>', p[1], p[3])
 
 # math
 # + - * / % -val ()
 
+def p_val_simple(p):
+    '''val : CONSTANT
+           | arrayG
+           | ID'''
+    p[0] = p[1]
+
 
 def p_expression_math(p):
     '''expression : expression "+" expression
+                  | expression "+" val
                   | expression "-" expression
+                  | expression "-" val
                   | expression "*" expression
+                  | expression "*" val
                   | expression "/" expression
+                  | expression "/" val
                   | expression "%" expression'''
     p[0] = (p[2], p[1], p[3])
 
