@@ -1,7 +1,28 @@
 import sys
+import platform
 from inspect import getframeinfo, stack
 
-asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
+system_platform = platform.system()
+
+if system_platform == 'Linux':
+    asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
+    main_entry = 'main:'
+    scanf_label = 'scanf'
+    printf_label = 'printf'
+    fflush_label = 'fflush'
+elif system_platform == 'Darwin':
+    asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
+    main_entry = '_main:'
+    scanf_label = '_scanf'
+    printf_label = '_printf'
+    fflush_label = '_fflush'
+else:
+    print('Warning : Windows assembly is not supported yet. Fallback to Linux')
+    asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
+    main_entry = 'main:'
+    scanf_label = 'scanf'
+    printf_label = 'printf'
+    fflush_label = 'fflush'
 asmtext = "section .text\n"
 asmdata = 'section .data\n'
 asmleave = 'mov rax, 0\npop rbp\nret\n'
@@ -28,7 +49,7 @@ def add_text(cmd):
 
 # init
 # sys_input
-add_data("_fmin", "\"%d\", 0")
+add_data("_fmin", "\"%ld\", 0")
 add_text("_input:")
 add_text("push rbp")
 add_text("mov rbp, rsp")
@@ -36,13 +57,13 @@ add_text("sub rsp, 16")
 add_text("lea rax, [rbp - 8]")
 add_text("mov rsi, rax")
 add_text("mov rdi, _fmin")
-add_text("call _scanf")
+add_text("call " + scanf_label)
 add_text("mov rax, [rbp - 8]")
 add_text("leave")
 add_text("ret")
 
 # add main label
-add_text("_main:")
+add_text(main_entry)
 add_text("push rbp")
 
 
@@ -232,11 +253,11 @@ def cmp_main(cmp_e):
     if type_b == 'expression':
         expression_main(b)
     elif type_b == 'ID':
-        add_text("mov rdx, [%s]" % b)
+        add_text("mov rbx, [%s]" % b)
     elif type_b == 'CONSTANT':
-        add_text("mov rdx, %s" % b)
+        add_text("mov rbx, %s" % b)
     if t != '&&':
-        add_text("cmp rax, rdx")
+        add_text("cmp rax, rbx")
     switcher = {
         '==': equal_routine,
         '>': greater_routine,
@@ -280,9 +301,9 @@ def print_routine(fmt, arg):
                 add_text("mov %s, rax" % reg_order[reg_c])
         reg_c += 1
         arg = arg[2]
-    add_text("call _printf")
+    add_text("call " + printf_label)
     add_text("xor rdi, rdi")
-    add_text("call _fflush")
+    add_text("call " + fflush_label)
 
 
 def assign_routine(dest, source):

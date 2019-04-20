@@ -47,7 +47,7 @@ def t_newline(t):
 
 
 def t_CONSTANT(t):
-    r'0h\d+|\d+'
+    r'0h\d+|\d+|-\d+'
     if t.value[:2] == '0h':
         t.value = str(int(t.value.replace('0h', '0x'), 16))
     t.type = 'CONSTANT'
