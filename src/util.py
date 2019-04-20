@@ -317,6 +317,17 @@ def assign_routine(dest, source):
         expression_main(source)
     elif s_type == 'INPUT':
         input_routine()
+    elif s_type == 'ARRAY':
+        index_type = get_type(source[2])
+        if index_type == 'ID':
+            add_text('mov rbx, %s' % source[1])
+            add_text('mov rcx, [%s]' % source[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('mov rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('mov rax, [%s + %s * 8]' % (source[1], source[2]))
+
     if d_type == 'ARRAY':
         index_type = get_type(dest[2])
         if index_type == 'ID':
