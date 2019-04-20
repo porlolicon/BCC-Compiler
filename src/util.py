@@ -15,6 +15,7 @@ global_str = {}
 global_if_counter = 0
 str_prefix = '_LC'
 
+
 def add_data(var_name, value):
     global asmdata
     asmdata += "%s db %s\n" % (var_name, value)
@@ -108,8 +109,16 @@ def declare_string(text):
     if text not in global_str:
         asm_symbol = str_prefix + str(global_str_counter)
         global_str[text] = asm_symbol
-        asm_val = '%s, 0' % text
-        add_data(asm_symbol, asm_val)
+        _text = ''
+        if '\\n' in text:
+            texts = text.replace('"', '').split('\\n')
+            for t in texts:
+                if t:
+                    _text += '"' + t + '", 10,'
+            _text += ' 0'
+        else:
+            _text = text + ', 0'
+        add_data(asm_symbol, _text)
         global_str_counter += 1
 
 
@@ -131,17 +140,37 @@ def multiple_stm_routine(stm1, stm2):
     statement_main(stm2)
 
 
-def if_routine(exp, stm):
+def ifelse_routine(ifstm, elsestm):
+    if_routine(ifstm[1], ifstm[2], iselse=True)
+    else_routine(elsestm)
+
+
+def if_routine(exp, stm, iselse=False):
     global global_if_counter
     global_if_counter += 1
-    exp_type = get_type(exp)
     expression_main(exp)
     statement_main(stm)
+    if iselse:
+        add_text("jmp _L%d" % (global_if_counter + 1))
     add_text("_L%d:" % global_if_counter)
 
 
-def else_routine():
-    pass
+def else_routine(stm):
+    global global_if_counter
+    statement_main(stm[1])
+    global_if_counter += 1
+    add_text("_L%d:" % global_if_counter)
+
+
+def while_routine(exp, stm):
+    global global_if_counter
+    global_if_counter += 1
+    _g_counter = global_if_counter + 1
+    add_text("_L%d:" % _g_counter)
+    expression_main(exp)
+    statement_main(stm)
+    add_text("jmp _L%d" % _g_counter)
+    add_text("_L%d:" % global_if_counter)
 
 
 def statement_main(stm):
@@ -152,7 +181,9 @@ def statement_main(stm):
         'var_constant': declare_var,
         'var_array': declare_arr,
         'multiple_stm': multiple_stm_routine,
-        'if': if_routine
+        'if': if_routine,
+        'ifelse': ifelse_routine,
+        'while': while_routine
     }
     func = switcher[state_symbol]
     func(stm[1], stm[2])
@@ -262,6 +293,8 @@ def plus_routine(a, b, count=0):
         add_text("add rax, " + a)
     elif a_type == 'ID':
         add_text("add rax, [%s]" % a)
+    elif a_type == 'expression':
+        expression_main(a, count)
     else:
         error_token()
 
@@ -276,17 +309,24 @@ def plus_routine(a, b, count=0):
 
 
 def minus_routine(a, b, count=0):
-    if count == 0:
-        add_text("mov rax, 0")
-    count += 1
     a_type = get_type(a)
     b_type = get_type(b)
     if a_type == 'CONSTANT':
-        add_text("sub rax, " + a)
+        if count == 0:
+            add_text("mov rax," + a)
+        else:
+            add_text("sub rax, " + a)
     elif a_type == 'ID':
-        add_text("sub rax, [%s]" % a)
+        if count == 0:
+            add_text("mov rax, [%s]" % a)
+        else:
+            add_text("sub rax, [%s]" % a)
+    elif a_type == 'expression':
+        expression_main(a, count)
     else:
         error_token()
+
+    count += 1
 
     if b_type == 'CONSTANT':
         add_text("sub rax, " + b)

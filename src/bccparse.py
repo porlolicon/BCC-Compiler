@@ -30,6 +30,7 @@ def p_statement_simple(p):
                  | printexp
                  | ifexp
                  | ifelseexp
+                 | whileexp
                  | statement NEWLINE'''
     #  | loopexp NEWLINE
     p[0] = p[1]
@@ -127,6 +128,14 @@ def p_elseexp_simple(p):
     else:
         p[0] = ('else', p[3])
 
+def p_whileexp_simple(p):
+    '''whileexp : WHILE expression "{" statement "}"
+             | WHILE expression "{" NEWLINE statement "}"'''
+    if p[4] == '\n':
+        p[0] = ('while', p[2], p[5])
+    else:
+        p[0] = ('while', p[2], p[4])
+
 # def p_statement_var(p):
 #     '''statement : VAR ID'''
 #     p[0] = ('var', p[2])
@@ -173,9 +182,13 @@ def p_expression_math(p):
     '''expression : expression "+" expression
                   | val "+" val
                   | expression "-" expression
+                  | val "-" val
                   | expression "*" expression
+                  | val "*" val
                   | expression "/" expression
-                  | expression "%" expression'''
+                  | val "/" val
+                  | expression "%" expression
+                  | val "%" val'''
     p[0] = (p[2], p[1], p[3])
 
 
