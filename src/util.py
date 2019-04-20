@@ -174,6 +174,7 @@ def while_routine(exp, stm):
     add_text("_L%d:" % loop_c)
     global_if_counter += 1
     expression_main(exp)
+    global_if_counter += 1
     statement_main(stm)
     add_text("jmp _L%d" % loop_c)
     add_text("_L%d:" % exit_c)
@@ -203,7 +204,9 @@ def expression_main(exp, count=0):
     else:
         switcher = {
             '+': plus_routine,
-            '-': minus_routine
+            '-': minus_routine,
+            '*': multiply_routine,
+            '/': divide_routine
         }
 
         func = switcher[t]
@@ -311,19 +314,23 @@ def assign_routine(dest, source):
 
 
 def plus_routine(a, b, count=0):
-    if count == 0:
-        add_text("mov rax, 0")
-    count += 1
     a_type = get_type(a)
     b_type = get_type(b)
     if a_type == 'CONSTANT':
-        add_text("add rax, " + a)
+        if count == 0:
+            add_text("mov rax, %s" % a)
+        else:
+            add_text("add rax, " + a)
     elif a_type == 'ID':
-        add_text("add rax, [%s]" % a)
+        if count == 0:
+            add_text("mov rax, [%s]" % a)
+        else:
+            add_text("add rax, [%s]" % a)
     elif a_type == 'expression':
         expression_main(a, count)
     else:
         error_token()
+    count += 1
 
     if b_type == 'CONSTANT':
         add_text("add rax, " + b)
@@ -363,6 +370,41 @@ def minus_routine(a, b, count=0):
         expression_main(b, count)
     else:
         error_token()
+
+
+def multiply_routine(a, b, count=0):
+    a_type = get_type(a)
+    b_type = get_type(b)
+    if a_type == 'CONSTANT':
+        if count == 0:
+            add_text("mov rax," + a)
+        else:
+            add_text("imul rax, " + a)
+    elif a_type == 'ID':
+        if count == 0:
+            add_text("mov rax, [%s]" % a)
+        else:
+            add_text("imul rax, [%s]" % a)
+    elif a_type == 'expression':
+        expression_main(a, count)
+
+    count += 1
+
+    if b_type == 'CONSTANT':
+        add_text("imul rax, %s" % b)
+    elif b_type == 'ID':
+        add_text("imul rax, [%s]" % b)
+    elif b_type == 'expression':
+        expression_main(b, count)
+    else:
+        error_token()
+
+
+def divide_routine(a, b):
+    a_type = get_type(a)
+    b_type = get_type(b)
+    if a_type == 'CONSTANT':
+        pass
 
 
 def and_routine():

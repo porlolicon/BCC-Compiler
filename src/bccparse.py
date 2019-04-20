@@ -60,7 +60,7 @@ def p_defineexp_constant1(p):
 
 
 def p_defineexp_constant2(p):
-    '''defineexp : VAR ID "=" expression
+    '''defineexp : VAR ID "=" val
                  | VAR ID "=" INPUT'''
     p[0] = ("var_constant", p[2], p[4])
 
