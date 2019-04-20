@@ -55,6 +55,8 @@ cmp_symbol = ['==', '!=', '>', '<', '>=', '<=', '&&']
 
 def get_type(symbol):
     if type(symbol) is tuple:
+        if symbol[0] == 'array':
+            return 'ARRAY'
         return 'expression'
     if symbol == 'array':
         return 'ARRAY'
@@ -127,11 +129,14 @@ def declare_arr(var_name, args):
     if var_name in global_var:
         print_error("Duplicate variable")
     else:
-        asmdata += "%s dq " % var_name
         if args[0] == 'argument':
+            asmdata += "%s dq " % var_name
             while args[1] != None:
                 asmdata += "%s ," % args[1]
                 args = args[2]
+        else:
+            # var array with size
+            asmdata += "%s times %s dq 0" % (var_name, args)
         asmdata += '\n'
 
 
@@ -164,13 +169,15 @@ def else_routine(stm):
 
 def while_routine(exp, stm):
     global global_if_counter
+    loop_c = global_if_counter
+    exit_c = loop_c + 1
+    add_text("_L%d:" % loop_c)
     global_if_counter += 1
-    _g_counter = global_if_counter + 1
-    add_text("_L%d:" % _g_counter)
     expression_main(exp)
     statement_main(stm)
-    add_text("jmp _L%d" % _g_counter)
-    add_text("_L%d:" % global_if_counter)
+    add_text("jmp _L%d" % loop_c)
+    add_text("_L%d:" % exit_c)
+    global_if_counter += 1
 
 
 def statement_main(stm):
@@ -257,6 +264,17 @@ def print_routine(fmt, arg):
                 add_text("mov %s, %s" % (reg_order[reg_c], a))
             elif a_type == 'ID':
                 add_text("mov %s, [%s]" % (reg_order[reg_c], a))
+            elif a_type == 'ARRAY':
+                index_type = get_type(a[2])
+                if index_type == 'ID':
+                    add_text('mov rbx, %s' % a[1])
+                    add_text('mov rcx, [%s]' % a[2])
+                    add_text('imul rcx, 8')
+                    add_text('add rbx, rcx')
+                    add_text('mov %s, [rbx]' % reg_order[reg_c])
+                elif index_type == 'CONSTANT':
+                    add_text('mov %s, [%s + %s * 8]' %
+                             (reg_order[reg_c], a[1], a[2]))
             else:
                 expression_main(arg[1])
                 add_text("mov %s, rax" % reg_order[reg_c])
@@ -268,18 +286,27 @@ def print_routine(fmt, arg):
 
 
 def assign_routine(dest, source):
+    d_type = get_type(dest)
     s_type = get_type(source)
     if s_type == 'CONSTANT':
         add_text('mov rax, ' + source)
-        add_text('mov [%s], rax' % dest)
     elif s_type == 'ID':
         add_text('mov rax, [%s]' % source)
-        add_text('mov [%s], rax' % dest)
     elif s_type == 'expression':
         expression_main(source)
-        add_text('mov [%s], rax' % dest)
     elif s_type == 'INPUT':
         input_routine()
+    if d_type == 'ARRAY':
+        index_type = get_type(dest[2])
+        if index_type == 'ID':
+            add_text('mov rbx, %s' % dest[1])
+            add_text('mov rcx, [%s]' % dest[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('mov [rbx], rax')
+        elif index_type == 'CONSTANT':
+            add_text('mov [%s + %s * 8], rax' % (dest[1], dest[2]))
+    else:
         add_text('mov [%s], rax' % dest)
 
 
