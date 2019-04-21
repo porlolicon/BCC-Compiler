@@ -320,7 +320,6 @@ def input_routine():
 
 
 def print_routine(fmt, arg):
-    add_text("mov %s, %s" % (reg_order[0], get_str(fmt)))
     reg_c = 1
     while arg[1] != None:
         if arg[0] == 'argument':
@@ -348,6 +347,7 @@ def print_routine(fmt, arg):
                 add_text("mov %s, rax" % reg_order[reg_c])
         reg_c += 1
         arg = arg[2]
+    add_text("mov %s, %s" % (reg_order[0], get_str(fmt)))
     add_text("call " + printf_label)
     add_text("xor %s, %s" % (reg_order[0], reg_order[0]))
     add_text("call " + fflush_label)
