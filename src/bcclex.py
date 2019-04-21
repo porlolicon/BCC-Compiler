@@ -8,7 +8,8 @@ reserved = {
     'else': 'ELSE',
     'print': 'PRINT',
     'input': 'INPUT',
-    'var': 'VAR'
+    'var': 'VAR',
+    'sleep': 'SLEEP'
 }
 
 tokens += reserved.values()
@@ -26,6 +27,9 @@ t_STRING_LITERAL = r'\"(\\.|[^"\\])*\"'
 literals = ['{', '}', '[', ']', '=', ',', '>',
             '<', '!', '(', ')', '+', '-', '*', '/', '%', '"']
 
+def t_COMMENT(t):
+     r'\#.*'
+     pass
 
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
@@ -37,6 +41,7 @@ def t_ID(t):
 def t_error(t):
     print('Illegal character')
     t.lexer.skip(1)
+
 
 def t_newline(t):
     r'\n+'

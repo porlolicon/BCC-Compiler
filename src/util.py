@@ -4,18 +4,20 @@ from inspect import getframeinfo, stack
 
 system_platform = platform.system()
 
-asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
+asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nextern usleep\nglobal main\n"
 main_entry = 'main:'
 scanf_label = 'scanf'
 printf_label = 'printf'
 fflush_label = 'fflush'
+sleep_label = 'usleep'
 reg_order = ["rdi", "rsi", "rdx", "rcx"]
 if system_platform == 'Darwin':
-    asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
+    asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nextern _usleep\nglobal _main\n"
     main_entry = '_main:'
     scanf_label = '_scanf'
     printf_label = '_printf'
     fflush_label = '_fflush'
+    sleep_label = '_usleep'
     reg_order = ["rdi", "rsi", "rdx", "rcx"]
 if system_platform == 'Windows':
     reg_order = ["rcx", "rdx", "r8", "r9"]
@@ -99,12 +101,14 @@ def get_str(text):
         declare_string(text)
     return global_str[text]
 
+
 def get_array_id(arr):
     get_var(arr[2])
     add_text('mov rbx, %s' % arr[1])
     add_text('mov rcx, [%s]' % arr[2])
     add_text('imul rcx, 8')
     add_text('add rbx, rcx')
+
 
 def print_error(error_str, show_line=True):
     if show_line:
@@ -224,6 +228,7 @@ def statement_main(stm):
         switcher = {
             'assign': assign_routine,
             'print': print_routine,
+            'sleep': sleep_routine,
             'var_constant': declare_var,
             'var_array': declare_arr,
             'multiple_stm': multiple_stm_routine,
@@ -314,6 +319,28 @@ def cmp_main(cmp_e):
 
 def input_routine():
     add_text("call _input")
+
+
+def sleep_routine(mc, _):
+    mc_t = get_type(mc)
+    if mc_t == 'ID':
+        get_var(mc)
+        add_text("mov %s, [%s]" % (reg_order[0], mc))
+    elif mc_t == 'CONSTANT':
+        add_text("mov %s, %s" % (reg_order[0], mc))
+    elif mc_t == 'ARRAY':
+        index_type = get_type(mc[2])
+        if index_type == 'ID':
+            get_array_id(mc)
+            add_text('mov %s, [rbx]' % reg_order[0])
+        elif index_type == 'CONSTANT':
+            add_text('mov %s, [%s + %s * 8]' % (reg_order[0], mc[1], mc[2]))
+        else:
+            error_token()
+    else:
+        error_token()
+    add_text('imul rdi, 1000')
+    add_text('call ' + sleep_label)
 
 
 def print_routine(fmt, arg):

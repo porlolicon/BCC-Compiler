@@ -11,11 +11,6 @@ precedence = (
     ('left', '>', '<')
 )
 
-
-def p_line_simple(p):
-    'line : statement'
-    p[0] = p[1]
-
 # statement --------------------------------
 
 
@@ -29,18 +24,17 @@ def p_statement_simple(p):
     '''statement : assignexp
                  | defineexp
                  | printexp
+                 | sleepexp
                  | ifexp
                  | ifelseexp
                  | whileexp
-                 | statement NEWLINE'''
+                 | statement NEWLINE
+                 | NEWLINE statement'''
     #  | loopexp NEWLINE
-    p[0] = p[1]
-
-
-def p_nl_simple(p):
-    '''nl : NEWLINE
-          | empty'''
-    p[0] = p[1]
+    if p[1] == '\n':
+        p[0] = p[2]
+    else:
+        p[0] = p[1]
 
 # assignexp --------------------------------
 
@@ -104,8 +98,15 @@ def p_printX_simple(p):
               | empty empty empty'''
     p[0] = ('argument', p[2], p[3])
 
+# sleep --------------------------------------
+
+def p_sleepexp_simple(p):
+    'sleepexp : SLEEP "(" val ")"'
+    p[0] = ('sleep', p[3], None)
 
 # if-else ---------------------------------------
+
+
 def p_ifexp_simple(p):
     '''ifexp : IF expression "{" statement "}"
              | IF expression "{" NEWLINE statement "}"'''
@@ -266,10 +267,12 @@ def p_error(p):
         if p.value == '\n':
             print("Syntax error at line %d" % p.lineno)
         else:
-            print("Syntax error at '%s' at line %d" % (p.value, p.lexer.lineno))
+            print("Syntax error at '%s' at line %d" %
+                  (p.value, p.lexer.lineno))
     else:
         print("Syntax error at EOF")
     sys.exit(1)
+
 
 parser = yacc.yacc()
 
