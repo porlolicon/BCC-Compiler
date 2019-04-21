@@ -36,6 +36,8 @@ global_str = {}
 global_if_counter = 0
 str_prefix = '_LC'
 
+lexer = None
+
 
 def add_data(var_name, value):
     global asmdata
@@ -93,9 +95,7 @@ def get_type(symbol):
 def get_var(symbol):
     if symbol in global_var:
         return symbol
-
-    print_error("Use of undeclare variable")
-    sys.exit(1)
+    print_error("Use of undeclare variable %s" % symbol)
 
 
 def get_str(text):
@@ -104,13 +104,17 @@ def get_str(text):
     return global_str[text]
 
 
-def print_error(error_str):
-    print("ERROR : " + error_str)
+def print_error(error_str, show_line=True):
+    if show_line:
+        print("ERROR : %s At line %d" % (error_str, lexer.lineno))
+    else:
+        print("ERROR : %s" % error_str)
+    sys.exit(1)
 
 
 def error_token():
-    caller = getframeinfo(stack()[1][0])
-    print("Error line : " + str(caller.lineno))
+    # caller = getframeinfo(stack()[1][0])
+    # print("Error line : " + str(caller.lineno))
     print_error("Unexpected token")
 
 
@@ -119,12 +123,20 @@ def declare_var(var_name, value=0):
     if var_name in global_var:
         print_error("Duplicate variable")
     else:
-        if value == 'input':
+        global_var.append(var_name)
+        val_type = get_type(value)
+        if val_type == 'INPUT':
             asmdata += "%s dq 0\n" % var_name
             input_routine()
             add_text("mov [%s], rax" % var_name)
-        else:
+        elif val_type == 'CONSTANT':
             asmdata += "%s dq %s\n" % (var_name, value)
+        elif val_type == 'ARRAY':
+            asmdata += "%s dq 0\n" % var_name
+            assign_routine(var_name, value)
+        else:
+            print_error('Declare variable with unsupport type.',
+                        show_line=False)
 
 
 def declare_string(text):
@@ -150,6 +162,7 @@ def declare_arr(var_name, args):
     if var_name in global_var:
         print_error("Duplicate variable")
     else:
+        global_var.append(var_name)
         if args[0] == 'argument':
             asmdata += "%s dq " % var_name
             while args[1] != None:
@@ -204,19 +217,24 @@ def while_routine(exp, stm):
 
 
 def statement_main(stm):
-    state_symbol = stm[0]
-    switcher = {
-        'assign': assign_routine,
-        'print': print_routine,
-        'var_constant': declare_var,
-        'var_array': declare_arr,
-        'multiple_stm': multiple_stm_routine,
-        'if': if_routine,
-        'ifelse': ifelse_routine,
-        'while': while_routine
-    }
-    func = switcher[state_symbol]
-    func(stm[1], stm[2])
+    try:
+        state_symbol = stm[0]
+        switcher = {
+            'assign': assign_routine,
+            'print': print_routine,
+            'var_constant': declare_var,
+            'var_array': declare_arr,
+            'multiple_stm': multiple_stm_routine,
+            'if': if_routine,
+            'ifelse': ifelse_routine,
+            'while': while_routine
+        }
+        func = switcher[state_symbol]
+        func(stm[1], stm[2])
+    except SystemExit:
+        sys.exit(1)
+    except:
+        pass
 
 
 def expression_main(exp, count=0):
@@ -246,16 +264,47 @@ def cmp_main(cmp_e):
     if type_a == 'expression':
         expression_main(a)
     elif type_a == 'ID':
+        get_var(a)
         add_text("mov rax, [%s]" % a)
     elif type_a == 'CONSTANT':
         add_text("mov rax, %s" % a)
+    elif type_a == 'ARRAY':
+        index_type = get_type(a[2])
+        get_var(a[1])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('mov rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+        else:
+            error_token()
 
     if type_b == 'expression':
         expression_main(b)
     elif type_b == 'ID':
+        get_var(b)
         add_text("mov rbx, [%s]" % b)
     elif type_b == 'CONSTANT':
         add_text("mov rbx, %s" % b)
+    elif type_a == 'ARRAY':
+        index_type = get_type(b[2])
+        get_var(a[1])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('mov rbx, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('mov rbx, [%s + %s * 8]' % (b[1], b[2]))
+        else:
+            error_token()
+
     if t != '&&':
         add_text("cmp rax, rbx")
     switcher = {
@@ -284,10 +333,12 @@ def print_routine(fmt, arg):
             if a_type == 'CONSTANT':
                 add_text("mov %s, %s" % (reg_order[reg_c], a))
             elif a_type == 'ID':
+                get_var(a)
                 add_text("mov %s, [%s]" % (reg_order[reg_c], a))
             elif a_type == 'ARRAY':
                 index_type = get_type(a[2])
                 if index_type == 'ID':
+                    get_var(a)
                     add_text('mov rbx, %s' % a[1])
                     add_text('mov rcx, [%s]' % a[2])
                     add_text('imul rcx, 8')
@@ -312,6 +363,7 @@ def assign_routine(dest, source):
     if s_type == 'CONSTANT':
         add_text('mov rax, ' + source)
     elif s_type == 'ID':
+        get_var(source)
         add_text('mov rax, [%s]' % source)
     elif s_type == 'expression':
         expression_main(source)
@@ -319,7 +371,9 @@ def assign_routine(dest, source):
         input_routine()
     elif s_type == 'ARRAY':
         index_type = get_type(source[2])
+        get_var(source[1])
         if index_type == 'ID':
+            get_var(source[2])
             add_text('mov rbx, %s' % source[1])
             add_text('mov rcx, [%s]' % source[2])
             add_text('imul rcx, 8')
@@ -331,6 +385,7 @@ def assign_routine(dest, source):
     if d_type == 'ARRAY':
         index_type = get_type(dest[2])
         if index_type == 'ID':
+            get_var(dest[1])
             add_text('mov rbx, %s' % dest[1])
             add_text('mov rcx, [%s]' % dest[2])
             add_text('imul rcx, 8')
@@ -339,6 +394,7 @@ def assign_routine(dest, source):
         elif index_type == 'CONSTANT':
             add_text('mov [%s + %s * 8], rax' % (dest[1], dest[2]))
     else:
+        get_var(dest)
         add_text('mov [%s], rax' % dest)
 
 
@@ -351,12 +407,30 @@ def plus_routine(a, b, count=0):
         else:
             add_text("add rax, " + a)
     elif a_type == 'ID':
+        get_var(a)
         if count == 0:
             add_text("mov rax, [%s]" % a)
         else:
             add_text("add rax, [%s]" % a)
     elif a_type == 'expression':
         expression_main(a, count)
+    elif a_type == 'ARRAY':
+        index_type = get_type(a[2])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            if count == 0:
+                add_text('mov rax, [rbx]')
+            else:
+                add_text('add rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            if count == 0:
+                add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+            else:
+                add_text('add rax, [%s + %s * 8]' % (a[1], a[2]))
     else:
         error_token()
     count += 1
@@ -364,9 +438,22 @@ def plus_routine(a, b, count=0):
     if b_type == 'CONSTANT':
         add_text("add rax, " + b)
     elif b_type == 'ID':
+        get_var(b)
         add_text("add rax, [%s]" % b)
     elif b_type == 'expression':
         expression_main(b, count)
+    elif b_type == 'ARRAY':
+        index_type = get_type(b[2])
+        if index_type == 'ID':
+            get_var(b[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('add rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('add rax, [%s + %s * 8]' % (b[1], b[2]))
+
     else:
         error_token()
 
@@ -380,12 +467,30 @@ def minus_routine(a, b, count=0):
         else:
             add_text("sub rax, " + a)
     elif a_type == 'ID':
+        get_var(a)
         if count == 0:
             add_text("mov rax, [%s]" % a)
         else:
             add_text("sub rax, [%s]" % a)
     elif a_type == 'expression':
         expression_main(a, count)
+    elif a_type == 'ARRAY':
+        index_type = get_type(a[2])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            if count == 0:
+                add_text('mov rax, [rbx]')
+            else:
+                add_text('sub rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            if count == 0:
+                add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+            else:
+                add_text('sub rax, [%s + %s * 8]' % (a[1], a[2]))
     else:
         error_token()
 
@@ -394,9 +499,21 @@ def minus_routine(a, b, count=0):
     if b_type == 'CONSTANT':
         add_text("sub rax, " + b)
     elif b_type == 'ID':
+        get_var(b)
         add_text("sub rax, [%s]" % b)
     elif b_type == 'expression':
         expression_main(b, count)
+    elif b_type == 'ARRAY':
+        index_type = get_type(b[2])
+        if index_type == 'ID':
+            get_var(b[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('sub rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('sub rax, [%s + %s * 8]' % (b[1], b[2]))
     else:
         error_token()
 
@@ -410,21 +527,52 @@ def multiply_routine(a, b, count=0):
         else:
             add_text("imul rax, " + a)
     elif a_type == 'ID':
+        get_var(a)
         if count == 0:
             add_text("mov rax, [%s]" % a)
         else:
             add_text("imul rax, [%s]" % a)
     elif a_type == 'expression':
         expression_main(a, count)
-
+    elif a_type == 'ARRAY':
+        index_type = get_type(a[2])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            if count == 0:
+                add_text('mov rax, [rbx]')
+            else:
+                add_text('imul rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            if count == 0:
+                add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+            else:
+                add_text('imul rax, [%s + %s * 8]' % (a[1], a[2]))
+    else:
+        error_token()
     count += 1
 
     if b_type == 'CONSTANT':
         add_text("imul rax, %s" % b)
     elif b_type == 'ID':
+        get_var(b)
         add_text("imul rax, [%s]" % b)
     elif b_type == 'expression':
         expression_main(b, count)
+    elif b_type == 'ARRAY':
+        index_type = get_type(b[2])
+        if index_type == 'ID':
+            get_var(b[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_text('imul rax, [rbx]')
+        elif index_type == 'CONSTANT':
+            add_text('imul rax, [%s + %s * 8]' % (b[1], b[2]))
     else:
         error_token()
 
@@ -440,6 +588,7 @@ def divide_routine(a, b, count=0):
             add_text('mov rcx, ' + a)
             add_text('idiv rcx')
     elif a_type == 'ID':
+        get_var(a)
         if count == 0:
             add_text('mov rax, [%s]' % a)
         else:
@@ -447,7 +596,27 @@ def divide_routine(a, b, count=0):
             add_text('idiv rcx')
     elif a_type == 'expression':
         expression_main(a, count)
-
+    elif a_type == 'ARRAY':
+        index_type = get_type(a[2])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            if count == 0:
+                add_text('mov rax, [rbx]')
+            else:
+                add_text('mov rcx, [rbx]')
+                add_text('idiv rcx')
+        elif index_type == 'CONSTANT':
+            if count == 0:
+                add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+            else:
+                add_text('mov rcx, [%s + %s * 8]' % (a[1], a[2]))
+                add_text('idiv rcx')
+    else:
+        error_token()
     count += 1
 
     add_text('xor rdx, rdx')
@@ -455,10 +624,26 @@ def divide_routine(a, b, count=0):
         add_text('mov rcx, ' + b)
         add_text('idiv rcx')
     elif b_type == 'ID':
+        get_var(b)
         add_text('mov rcx, [%s]' % b)
         add_text('idiv rcx')
     elif b_type == 'expression':
         expression_main(b, count)
+    elif b_type == 'ARRAY':
+        index_type = get_type(b[2])
+        if index_type == 'ID':
+            get_var(b[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_data('mov rcx, [rbx]')
+            add_text('idiv rcx')
+        elif index_type == 'CONSTANT':
+            add_text('mov rcx, [%s + %s * 8]' % (b[1], b[2]))
+            add_text('idiv rcx')
+    else:
+        error_token()
 
 
 def mod_routine(a, b, count=0):
@@ -473,6 +658,7 @@ def mod_routine(a, b, count=0):
             add_text('idiv rcx')
             add_text('mov rax, rdx')
     elif a_type == 'ID':
+        get_var(a)
         if count == 0:
             add_text('mov rax, [%s]' % a)
         else:
@@ -481,6 +667,29 @@ def mod_routine(a, b, count=0):
             add_text('mov rax, rdx')
     elif a_type == 'expression':
         expression_main(a, count)
+    elif a_type == 'ARRAY':
+        index_type = get_type(a[2])
+        if index_type == 'ID':
+            get_var(a[2])
+            add_text('mov rbx, %s' % a[1])
+            add_text('mov rcx, [%s]' % a[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            if count == 0:
+                add_text('mov rax, [rbx]')
+            else:
+                add_text('mov rcx, [rbx]')
+                add_text('idiv rcx')
+                add_text('mov rax, rdx')
+        elif index_type == 'CONSTANT':
+            if count == 0:
+                add_text('mov rax, [%s + %s * 8]' % (a[1], a[2]))
+            else:
+                add_text('mov rcx, [%s + %s * 8]' % (a[1], a[2]))
+                add_text('idiv rcx')
+                add_text('mov rax, rdx')
+    else:
+        error_token()
 
     count += 1
 
@@ -490,11 +699,29 @@ def mod_routine(a, b, count=0):
         add_text('idiv rcx')
         add_text('mov rax, rdx')
     elif b_type == 'ID':
+        get_var(b)
         add_text('mov rcx, [%s]' % b)
         add_text('idiv rcx')
         add_text('mov rax, rdx')
     elif b_type == 'expression':
         expression_main(b, count)
+    elif b_type == 'ARRAY':
+        index_type = get_type(b[2])
+        if index_type == 'ID':
+            get_var(b[2])
+            add_text('mov rbx, %s' % b[1])
+            add_text('mov rcx, [%s]' % b[2])
+            add_text('imul rcx, 8')
+            add_text('add rbx, rcx')
+            add_data('mov rcx, [rbx]')
+            add_text('idiv rcx')
+            add_text('mov rax, rdx')
+        elif index_type == 'CONSTANT':
+            add_text('mov rcx, [%s + %s * 8]' % (b[1], b[2]))
+            add_text('idiv rcx')
+            add_text('mov rax, rdx')
+    else:
+        error_token()
 
 
 def and_routine():

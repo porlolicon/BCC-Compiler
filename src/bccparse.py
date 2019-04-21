@@ -1,5 +1,6 @@
 import ply.yacc as yacc
 import bcclex
+import sys
 
 tokens = bcclex.tokens
 
@@ -262,13 +263,16 @@ def p_empty(p):
 
 def p_error(p):
     if p:
-        print("Syntax error at '%s'" % p.value)
+        if p.value == '\n':
+            print("Syntax error at line %d" % p.lineno)
+        else:
+            print("Syntax error at '%s' at line %d" % (p.value, p.lexer.lineno))
     else:
         print("Syntax error at EOF")
-
+    sys.exit(1)
 
 parser = yacc.yacc()
 
 
 def parse(s, debug=False):
-    return parser.parse(s, debug=debug)
+    return parser.parse(s, tracking=True, debug=debug)

@@ -16,7 +16,7 @@ endif
 
 asm:
 	@nasm -f $(NASM_ARC) test.asm
-	@gcc -no-pie -m64 -o test.out test.o
+	@gcc -w -no-pie -m64 -o test.out test.o
 
 clean:
 	@rm -rf $(EXECFILE)
