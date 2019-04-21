@@ -22,3 +22,7 @@ while i < 10 {
 print("min: %ld\n" ,min)
 
 ```
+## Usage
+```
+python3 src/main.py source.bcc a.asm a.out
+```
