@@ -3,17 +3,22 @@
 
 ## Syntax Example
 ```
-var a = input
-var b = 3
-var c = sum(a, b)
-print("%d + %d = %d", a, b, c);
+var arr[10]
+var i = 0
 
-if a > 2 {
-  a = 2
+while i < 10 {
+  print("[%ld]: ", i)
+  arr[i] = input
+  i = i + 1
 }
-
-while a <= 20 {
-  a = a + 1
+i = 1
+var min = arr[0]
+while i < 10 {
+  if arr[i] < min {
+    min = arr[i]
+  }
+  i = i + 1
 }
+print("min: %ld\n" ,min)
 
 ```
