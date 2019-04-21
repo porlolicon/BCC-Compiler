@@ -184,14 +184,19 @@ def p_expression_simple(p):
 def p_expression_math(p):
     '''expression : expression "+" expression
                   | val "+" val
+                  | val "+" expression
                   | expression "-" expression
                   | val "-" val
+                  | val "-" expression
                   | expression "*" expression
                   | val "*" val
+                  | val "*" expression
                   | expression "/" expression
                   | val "/" val
+                  | val "/" expression
                   | expression "%" expression
-                  | val "%" val'''
+                  | val "%" val
+                  | val "%" expression'''
     p[0] = (p[2], p[1], p[3])
 
 
@@ -202,7 +207,7 @@ def p_expression_minusValue(p):
 
 def p_expression_bracket(p):
     'expression : "(" expression ")"'
-    p[0] = ('bracket', p[2])
+    p[0] = p[2]
 
 # boolean
 #'EQ_OP', 'LE_OP', 'GE_OP', 'NE_OP' , 'AND_OP', 'OR_OP' , '<' , '>'
