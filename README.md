@@ -22,6 +22,23 @@ while i < 10 {
 print("min: %ld\n" ,min)
 ```
 
+```
+# Timer program
+var min = 0
+var sec = 0
+print("Timer\n")
+while 1 == 1 {
+  print("%.2ld:%.2ld\n", min, sec)
+  sec = sec + 1
+  if sec == 60 {
+    sec = 0
+    min = min + 1
+  }
+  # Sleep 1000 millisec
+  sleep(1000)
+}
+```
+
 ## Prerequisite
 * gcc for windows use [Mingw64](https://mingw-w64.org/doku.php/download/mingw-builds)
 * nasm
