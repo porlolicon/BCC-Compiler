@@ -334,7 +334,7 @@ def print_routine(fmt, arg):
             elif a_type == 'ARRAY':
                 index_type = get_type(a[2])
                 if index_type == 'ID':
-                    get_var(a)
+                    get_var(a[2])
                     add_text('mov rbx, %s' % a[1])
                     add_text('mov rcx, [%s]' % a[2])
                     add_text('imul rcx, 8')
