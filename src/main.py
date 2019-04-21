@@ -5,7 +5,7 @@ import util
 import subprocess
 import platform
 
-nasm_args = {'Linux': 'elf64', 'Darwin': 'macho64'}
+nasm_args = {'Linux': 'elf64', 'Darwin': 'macho64', 'Windows': 'win64'}
 
 system_platform = platform.system()
 
@@ -32,7 +32,7 @@ if result:
         print("Compile to executeable for this platform is not supported yet.")
     else:
         nasm_arg = nasm_args[system_platform]
-        p = subprocess.Popen(['nasm', '-f', nasm_arg, args.output_asm])
+        p = subprocess.Popen(['nasm', '-f', nasm_arg, args.output_asm, '-o', args.output_asm[:-3] + 'o'])
         p.wait()
         p = subprocess.Popen(
             ['gcc', '-w', '-no-pie', '-m64', '-o', args.output_exec, args.output_asm[:-3] + 'o'])

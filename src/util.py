@@ -4,30 +4,26 @@ from inspect import getframeinfo, stack
 
 system_platform = platform.system()
 
-if system_platform == 'Linux':
-    asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
-    main_entry = 'main:'
-    scanf_label = 'scanf'
-    printf_label = 'printf'
-    fflush_label = 'fflush'
-elif system_platform == 'Darwin':
+asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
+main_entry = 'main:'
+scanf_label = 'scanf'
+printf_label = 'printf'
+fflush_label = 'fflush'
+reg_order = ["rdi", "rsi", "rdx", "rcx"]
+if system_platform == 'Darwin':
     asmheader = "DEFAULT REL\nextern _printf\nextern _scanf\nextern _fflush\nglobal _main\n"
     main_entry = '_main:'
     scanf_label = '_scanf'
     printf_label = '_printf'
     fflush_label = '_fflush'
-else:
-    print('Warning : Windows assembly is not supported yet. Fallback to Linux')
-    asmheader = "DEFAULT REL\nextern printf\nextern scanf\nextern fflush\nglobal main\n"
-    main_entry = 'main:'
-    scanf_label = 'scanf'
-    printf_label = 'printf'
-    fflush_label = 'fflush'
+    reg_order = ["rdi", "rsi", "rdx", "rcx"]
+if system_platform == 'Windows':
+    reg_order = ["rcx", "rdx", "r8", "r9"]
+
 asmtext = "section .text\n"
 asmdata = 'section .data\n'
-asmleave = 'mov rax, 0\npop rbp\nret\n'
+asmleave = 'xor rax, rax\npop rbp\nret\n'
 
-reg_order = ["rdi", "rsi", "rdx", "rcx"]
 
 global_var = []
 
@@ -55,10 +51,10 @@ add_data("_fmin", "\"%ld\", 0")
 add_text("_input:")
 add_text("push rbp")
 add_text("mov rbp, rsp")
-add_text("sub rsp, 16")
+add_text("sub rsp, 32")
 add_text("lea rax, [rbp - 8]")
-add_text("mov rsi, rax")
-add_text("mov rdi, _fmin")
+add_text("mov %s, _fmin" % reg_order[0])
+add_text("mov %s, rax" % reg_order[1])
 add_text("call " + scanf_label)
 add_text("mov rax, [rbp - 8]")
 add_text("leave")
@@ -324,7 +320,7 @@ def input_routine():
 
 
 def print_routine(fmt, arg):
-    add_text("mov rdi, " + get_str(fmt))
+    add_text("mov %s, %s" % (reg_order[0], get_str(fmt)))
     reg_c = 1
     while arg[1] != None:
         if arg[0] == 'argument':
@@ -353,7 +349,7 @@ def print_routine(fmt, arg):
         reg_c += 1
         arg = arg[2]
     add_text("call " + printf_label)
-    add_text("xor rdi, rdi")
+    add_text("xor %s, %s" % (reg_order[0], reg_order[0]))
     add_text("call " + fflush_label)
 
 
