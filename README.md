@@ -20,8 +20,13 @@ while i < 10 {
   i = i + 1
 }
 print("min: %ld\n" ,min)
-
 ```
+
+## Prerequisite
+* gcc for windows use [Mingw64](https://mingw-w64.org/doku.php/download/mingw-builds)
+* nasm
+* python 3
+
 ## Usage
 ```
 python3 src/main.py source.bcc a.asm a.out
