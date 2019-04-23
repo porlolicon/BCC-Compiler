@@ -315,6 +315,7 @@ def cmp_main(cmp_e):
         '<': less_routine,
         '<=': less_equ_routine,
         '>=': greater_equ_routine,
+        '!=': not_equal_routine,
         '&&': and_routine
     }
     func = switcher[t]
