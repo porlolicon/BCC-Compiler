@@ -6,3 +6,4 @@ src/test.bcc
 test.asm
 test.o
 test.out
+test.bcc

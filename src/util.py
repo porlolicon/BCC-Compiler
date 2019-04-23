@@ -1,6 +1,7 @@
 import sys
 import platform
 from inspect import getframeinfo, stack
+from copy import deepcopy
 
 system_platform = platform.system()
 
@@ -185,19 +186,22 @@ def multiple_stm_routine(stm1, stm2):
     statement_main(stm2)
 
 
-def ifelse_routine(ifstm, elsestm):
-    if_routine(ifstm[1], ifstm[2], iselse=True)
-    else_routine(elsestm)
+def ifelse_routine(ifstm, else_stm):
+    if_routine(ifstm[1], ifstm[2], else_stm=else_stm)
+    else_routine(else_stm)
 
 
-def if_routine(exp, stm, iselse=False):
+def if_routine(exp, stm, else_stm=None):
     global global_if_counter
     global_if_counter += 1
     exit_c = global_if_counter
     expression_main(exp)
     statement_main(stm)
-    if iselse:
-        add_text("jmp _L%d" % (global_if_counter + 1))
+    if else_stm:
+        offset = 1
+        s = str(else_stm)
+        offset += s.count("'else'")
+        add_text("jmp _L%d" % (global_if_counter + offset))
     add_text("_L%d:" % exit_c)
 
 
