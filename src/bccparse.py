@@ -7,7 +7,7 @@ tokens = bcclex.tokens
 precedence = (
     ('right', 'AND_OP'),
     ('left', '+', '-'),
-    ('left', '*', '/'),
+    ('left', '*', '/', '%'),
     ('left', '>', '<')
 )
 
@@ -99,6 +99,7 @@ def p_printX_simple(p):
     p[0] = ('argument', p[2], p[3])
 
 # sleep --------------------------------------
+
 
 def p_sleepexp_simple(p):
     'sleepexp : SLEEP "(" val ")"'
